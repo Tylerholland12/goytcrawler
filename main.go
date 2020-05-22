@@ -10,9 +10,7 @@ import (
 	"github.com/steelx/extractlinks"
 )
 
-func main() {
-	baseURL := "https://www.youtube.com/"
-
+var (
 	config := &tls.Config{
 		InsecureSkipVerify: true,
 	}
@@ -23,24 +21,75 @@ func main() {
 	netClient := &http.Client{
 		Transport: transport,
 	}
+	queue := make(chan string)
+)
 
+func main() {
+	arguements := os.Args[1:]
+	
+	if len(arguements) == 0 {
+		fmt.Println("Missing URL, e.g. go-webscrapper http://js.org/")
+		os.Exit(1)
+	}
+	
+	baseURL := arguements[0]
+
+	// keep function concurrent to not exhaust all resources visiting a single link
+	go func () {
+		queue <- arguements[0]
+	}()
+
+	// crawl url when it is recieved  
+	for href := range queue {
+		crawlURL(href)
+	}
+	crawlUrl(baseURl)
+	
+}
+
+func crawlURL(href string) {
+	fmt.Printf("Crawling url -> %v \n", href)
 	response, err := netClient.Get(baseURL)
 	checkErr(err)
-
 	defer response.Body.Close()
 
-	
 
 	links, err := extractlinks.All(response.Body)
 	checkErr(err)
 
-	for i, link := range links {
-		fmt.Printf("index %v -- link %v \n", i, link.Href)
-	}
+	for _, link := range links {
+		absluteURL := link.Href
+		// so that we are not pushing links faster than we receive them 
+		go func () {
+			queue <- absluteURL
+	}()
+}
 
 	fmt.Println(links)
 
 	response.Body.Close()
+
+}
+
+func toFixedURL(href, baseURL string) {
+	uri, err := url.Parse(href)
+	if err != nil {
+		return ""
+	}
+
+
+	base, err := url.Parse(baseURL) 
+	if err != nil {
+		return ""
+	}
+
+	// host from base
+	// path from uri 
+	// has its own host
+	toFixedURI := base.ResolveReference(uri)
+	return toFixedURI.String()
+
+
 }
 
 func checkErr(err error) {
