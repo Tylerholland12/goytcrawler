@@ -3,10 +3,11 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
 	"net/http"
 	"os"
-	"github.com/steelx/extractlinks "
+
+	"github.com/steelx/extractlinks"
 )
 
 func main() {
