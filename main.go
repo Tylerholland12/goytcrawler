@@ -11,17 +11,18 @@ import (
 )
 
 var (
-	config := &tls.Config{
+	config = &tls.Config{
 		InsecureSkipVerify: true,
 	}
 
-	transport := &http.Transport{
+	transport = &http.Transport{
 		TLSClientConfig: config,
 	}
-	netClient := &http.Client{
+	netClient = &http.Client{
 		Transport: transport,
 	}
-	queue := make(chan string)
+	queue = make(chan string)
+	hasVisited = make(map[string]bool)
 )
 
 func main() {
@@ -36,18 +37,36 @@ func main() {
 
 	// keep function concurrent to not exhaust all resources visiting a single link
 	go func () {
-		queue <- arguements[0]
+		queue <- baseURL
 	}()
 
 	// crawl url when it is recieved  
-	for href := range queue {
-		crawlURL(href)
+	for href := range queue && isSameDomain(href, baseURL){
+		if !hasVisited[href] {
+			crawlURL(href)
+		}
+	}	
+}
+
+func isSameDomain () {
+	uri, err := url.Parse(href) 
+	if err != nil {
+		return false
 	}
-	crawlUrl(baseURl)
-	
+	parentURI, err := url.Parse(baseURL)
+	if err != nil {
+		return false
+	}
+
+	if uri.Host != parentURI.Host {
+		return false
+	}
+
+	return true
 }
 
 func crawlURL(href string) {
+	hasVisited[href] = true
 	fmt.Printf("Crawling url -> %v \n", href)
 	response, err := netClient.Get(baseURL)
 	checkErr(err)
@@ -58,7 +77,7 @@ func crawlURL(href string) {
 	checkErr(err)
 
 	for _, link := range links {
-		absluteURL := link.Href
+		absluteURL := toFixedURL(link.Href, href)
 		// so that we are not pushing links faster than we receive them 
 		go func () {
 			queue <- absluteURL
