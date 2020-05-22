@@ -25,12 +25,18 @@ func main() {
 	}
 
 	response, err := netClient.Get(baseURL)
+	checkErr(err)
+
 	defer response.Body.Close()
 
-	checkErr(err)
+	
 
 	links, err := extractlinks.All(response.Body)
 	checkErr(err)
+
+	for i, link := range links {
+		fmt.Printf("index %v -- link %v \n", i, link.Href)
+	}
 
 	fmt.Println(links)
 
